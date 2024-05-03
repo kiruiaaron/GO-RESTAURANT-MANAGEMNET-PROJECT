@@ -1,17 +1,53 @@
 package controllers
 
-import "github.com/gin-gonic/gin"
+import (
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/kiruiaaron/GO-RESTAURANT-MANAGEMNET-PROJECT/database"
+	"github.com/kiruiaaron/GO-RESTAURANT-MANAGEMNET-PROJECT/models"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+)
+
+var orderCollection *mongo.Collection = database.OpenCollection(database.Client, "order")
 
 
 func GetOrders() *gin.HandlerFunc{
 	return func (c *gin.Context)  {
-		
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+
+		result, err := orderCollection.Find(context.TODO(), bson.M{})
+		defer cancel()
+		if err != nil{
+			c.JSON(http.StatusInternalServerError, gin.H{"error":"error occurred while listing order items"})
+		}
+		var allOrders []bson.M
+		if err=result.All(ctx, &allOrders); err != nil{
+			log.Fatal(err)
+		}
+		c.JSON(http.StatusOK, allOrders)
 	}
 }
 
 func GetOrder() *gin.HandlerFunc{
 	return func (c *gin.Context)  {
-		
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+		orderId := c.Param("Order_id")
+		var order models.Order
+
+		err := foodCollection.FindOne(ctx, bson.M{"order_id":orderId}).Decode(&order)
+		defer cancel()
+
+		if err != nil{
+			c.JSON(http.StatusInternalServerError, gin.H{"error":"error occurred while fetching the orders"})
+		}
+		c.JSON(http.StatusOK, order)
 	}
 }
 func CreateOrder() *gin.HandlerFunc{
@@ -21,6 +57,27 @@ func CreateOrder() *gin.HandlerFunc{
 }
 func UpdateOrder() *gin.HandlerFunc{
 	return func (c *gin.Context)  {
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+        var table models.Table
+		var order models.Order 
 		
+
+		var updatedObj primitive.D
+		orderId := c.Param("order_id")
+		if err := c.BindJSON(&order); err != nil{
+			c.JSON(http.StatusBadRequest, gin.H{"error":err.Error()})
+			return
+		}
+		
+		if order.Table_id != nil{
+            err := menuCollection.FindOne(ctx, bson.M{"table_id":table.Table_id}).Decode(&table)
+			defer cancel()
+			if err != nil{
+				msg := fmt.Sprintf("message: Menu was not found")
+				c.JSON(http.StatusInternalServerError, gin.H{"error":msg})
+				return
+			}
+			updatedObj = append(updatedObj, bson.E{"menu", order.Table_id})
+		}
 	}
 }
