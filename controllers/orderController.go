@@ -13,6 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/mongocrypt/options"
 )
 
 var orderCollection *mongo.Collection = database.OpenCollection(database.Client, "order")
@@ -68,7 +69,7 @@ func UpdateOrder() *gin.HandlerFunc{
 			c.JSON(http.StatusBadRequest, gin.H{"error":err.Error()})
 			return
 		}
-		
+
 		if order.Table_id != nil{
             err := menuCollection.FindOne(ctx, bson.M{"table_id":table.Table_id}).Decode(&table)
 			defer cancel()
@@ -77,7 +78,33 @@ func UpdateOrder() *gin.HandlerFunc{
 				c.JSON(http.StatusInternalServerError, gin.H{"error":msg})
 				return
 			}
-			updatedObj = append(updatedObj, bson.E{"menu", order.Table_id})
+			updatedObj = append(updatedObj, bson.E{"order", order.Table_id})
+			order.Updated_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+			updatedObj = append(updatedObj, bson.E{"updated_at", order.Updated_at})
+
+		upsert := true
+		filter := bson.M{"order_id":orderId}
+
+		opt := options.UpdateOne{
+			Upsert : &upsert,
+		}
+
+		result, err := orderCollection.UpdateOne(
+			ctx,
+			filter,
+			bson.D{
+				{"$set", updatedObj},
+			},
+			&opt,
+		)
+        
+		if err != nil{
+			msg:= fmt.Sprintf("order item update failed")
+			c.JSON(http.StatusInternalServerError, gin.H{"error":msg})
+			return
+		}
+		defer cancel()
+		c.JSON(http.StatusOK, result)
 		}
 	}
 }

@@ -176,7 +176,7 @@ func UpdateFood() *gin.HandlerFunc{
 		filter := bson.M{"food_id":foodId}
 
 		opt := options.UpdateOne{
-			upsert : &upsert,
+			Upsert : &upsert,
 		}
 
 		result, err := foodCollection.UpdateOne(
