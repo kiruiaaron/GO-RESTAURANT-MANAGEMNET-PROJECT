@@ -57,7 +57,7 @@ func CreateOrder() *gin.HandlerFunc{
 		var table models.Table
 		var order models.Order
 
-		if err := c.BindJSON(&oder); err != nil{
+		if err := c.BindJSON(&order); err != nil{
 			c.JSON(http.StatusBadRequest, gin.H{"error":err.Error()})
 			return
 		}
@@ -151,7 +151,7 @@ func UpdateOrder() *gin.HandlerFunc{
 }
 
 
-func orderItemCretor(order models.Order) string{ 
+func orderItemCreator(order models.Order) string{ 
 	var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 	order.Created_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
 	order.Updated_at,_=time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
