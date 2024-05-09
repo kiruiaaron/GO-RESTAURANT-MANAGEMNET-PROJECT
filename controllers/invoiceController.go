@@ -103,7 +103,13 @@ func CreateInvoice() gin.HandlerFunc{
 				msg := fmt.Sprintf("message: Menu was not found")
 				c.JSON(http.StatusInternalServerError, gin.H{"error":msg})
 				return
-		}   
+		} 
+		status := "PENDING"
+		if invoice.Payment_Status == nil{
+			invoice.Payment_Status = &status
+		}  
+		invoice.Created_at, _ =time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+		invoice.Updated_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
 	}
 }
 
@@ -122,11 +128,11 @@ func UpdateInvoice() gin.HandlerFunc{
 		var updatedObj primitive.D
 
 		if invoice.Payment_Method != nil{
-            
+            updatedObj = append(updatedObj, bson.E{"payment_method", invoice.Payment_Method})
 		}
 
 		if invoice.Payment_Status != nil{
-            
+            updatedObj = append(updatedObj, bson.E{"payment_status", invoice.Payment_Status})
 		}
 
 		invoice.Updated_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
@@ -138,10 +144,7 @@ func UpdateInvoice() gin.HandlerFunc{
 			Upsert : &upsert,
 		}
         
-		status := "PENDING"
-		if invoice.Payment_Status == nil{
-			invoice.Payment_Status = &status
-		}
+		
 		result, err := invoiceCollection.UpdateOne(
 			ctx,
 			filter,
