@@ -42,7 +42,7 @@ func GetOrder() *gin.HandlerFunc{
 		orderId := c.Param("Order_id")
 		var order models.Order
 
-		err := foodCollection.FindOne(ctx, bson.M{"order_id":orderId}).Decode(&order)
+		err := orderCollection.FindOne(ctx, bson.M{"order_id":orderId}).Decode(&order)
 		defer cancel()
 
 		if err != nil{
@@ -70,7 +70,7 @@ func CreateOrder() *gin.HandlerFunc{
 		}
 
 		if order.Table_id != nil{
-			err := tableCollection.FindOne(ctx, bson.M{"table_id":order.table_id}).Decode(&table)
+			err := tableCollection.FindOne(ctx, bson.M{"table_id":order.Table_id}).Decode(&table)
 			defer cancel()
 			if err != nil{
 				msg := fmt.Sprintf("message: Table was not found")

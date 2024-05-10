@@ -14,7 +14,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/mongocrypt/options"
-	"golang.org/x/tools/go/analysis/passes/defers"
 )
 
 var menuCollection *mongo.Collection = database.OpenCollection(database.Client, "menu")

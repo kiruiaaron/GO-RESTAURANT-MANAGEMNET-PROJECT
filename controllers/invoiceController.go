@@ -97,7 +97,7 @@ func CreateInvoice() gin.HandlerFunc{
 
 		var order models.Order
 
-		err := invoiceCollection.FindOne(ctx, bson.M{"table_id":table.Table_id}).Decode(&table)
+		err := orderCollection.FindOne(ctx, bson.M{"order_id":order.Order_id}).Decode(&order)
 			defer cancel()
 			if err != nil{
 				msg := fmt.Sprintf("message: Menu was not found")
@@ -108,8 +108,27 @@ func CreateInvoice() gin.HandlerFunc{
 		if invoice.Payment_Status == nil{
 			invoice.Payment_Status = &status
 		}  
+		invoice.Payment_Due_Date, _ =  time.Parse(time.RFC3339, time.Now().AddDate(0,0,1).Format(time.RFC3339))
 		invoice.Created_at, _ =time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
 		invoice.Updated_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+		invoice.ID = primitive.NewObjectID()
+		invoice.Invoice_id = invoice.ID.Hex()
+
+		validationErr := validate.Struct(invoice)
+		if validationErr != nil{
+			c.JSON(http.StatusBadRequest, gin.H{"error":validationErr.Error()})
+			return
+		}
+
+		result, insertErr  := invoiceCollection.InsertOne(ctx, invoice)
+		if insertErr != nil{
+            msg := fmt.Sprintf("invoice item was not created")
+			c.JSON(http.StatusInternalServerError, gin.H{"error":msg})
+			return
+		}
+
+		defer cancel()
+		c.JSON(http.StatusOK, result)
 	}
 }
 
