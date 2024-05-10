@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"runtime/trace"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -63,8 +64,70 @@ func GetOrderItemsByOrder() *gin.HandlerFunc{
 
 
 func ItemsByOrder(id string)(OrderItems []primitive.M, err error){
-	
-}
+	var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+
+	matchStage := bson.D{{"$match", bson.D{{"order_id", id}}}}
+	lookUpStage := bson.D{{"$lookup", bson.D{{"from", "food"},{"localfield",  "food_id"},{"foreignField","food_id"},{"as","food"}}}}
+	unwindStage := bson.D{{"$unwind", bson.D{{"path", "$food"}, {"preserveNullAndEmptyArrays", true}}}}
+
+	lookUpOrderStage := bson.D{{"$lookup", bson.D{{"from", "order"}, {"localField","order_id"},{"foreignField", "order_id"},{"as", "order"}}}}
+
+	unwindOrderStage := bson.D{{"$unwind", bson.D{{"path", "$order"},{"preserveNullEmptyArrays", true}}}}
+
+	lookUpTableStage := bson.D{{"$lookup", bson.D{{"from", "table"}, {"localField","order.table_id"},{"foreignField","table_id"},{"as", "table"}}}}
+	unwindTableStage := bson.d{{"$unwind", bson.D{{"path","$table"},{"preserveNullAndEmptyArrays", true}}}}
+
+	projectStage := bson.D{
+		{
+			"$project",bson.D{
+				{"id",0},
+				{"amount","$food.price"},
+				{"total_count",1},
+				{"food_name","$food.name"},
+				{"food_image","$food.food_image"},
+				{"table_number", "$table.table_number"},
+				{"table_id","$table.table_id"},
+				{"order_id","$order.order_id"},
+				{"price","$food.price"},
+				{"quantity",1},
+		}}}
+
+		groupStage := bson.D{{"$group", bson.D{{"_id", bson.D{{"order_id","$order_id"},{"table_id","$table_id"},{"table_number","$table_number"}}},{"payment_due",bson.D{{"$sum","$amount"},{"total_amount",bson.D{{"$sum",1}}}, {"order_items",bson.D{{""}}}}}}}}
+
+		projectStage2 := bson.D{
+			{
+				"$project", bson.D{
+					{"id",0},
+					{"total_count",1},
+					{"table_number","$_id.table_number"},
+					{"order_items",1},
+			}}}
+
+		
+			result, err := orderItemCollection.Aggregate(ctx, mongo.Pipeline{
+				matchStage,
+				lookUpStage,
+				unwindStage,
+				lookUpOrderStage,
+				unwindOrderStage,
+				lookUpTableStage,
+				unwindTableStage,
+				projectStage,
+				groupStage,
+				projectStage2})
+
+		if  err != nil{
+			panic(err)
+		}
+
+		if err = result.All(ctx,&OrderItems);err != nil{
+             panic(err)
+		}
+
+		defer cancel()
+		return OrderItems, err
+
+} 
 
 func GetOrderItem() *gin.HandlerFunc{
 	return func (c *gin.Context)  {
